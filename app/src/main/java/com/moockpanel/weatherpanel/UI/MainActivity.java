@@ -20,6 +20,7 @@ import android.widget.Toast;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
+import com.mixpanel.android.mpmetrics.Tweak;
 import com.moockpanel.weatherpanel.R;
 import com.moockpanel.weatherpanel.weather.Current;
 import com.moockpanel.weatherpanel.weather.Day;
@@ -54,6 +55,9 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     String projectToken = "sm_android";
     MixpanelAPI mMixpanel;
+    MixpanelAPI.People mPeople;
+    private static Tweak<String> tempFormat = MixpanelAPI.stringTweak("Temperature Format", "F");
+    private static Tweak<Boolean> showAds = MixpanelAPI.booleanTweak("Show ads", false);
 
     private Forecast mForecast;
     private Location mLastLocation;
@@ -83,6 +87,10 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         mGoogleApiClient.connect();
 
         mMixpanel = MixpanelAPI.getInstance(this, projectToken);
+        mPeople = mMixpanel.getPeople();
+        mMixpanel.identify("144053a6-4c65-4272-b63f-45391b4d009f");
+        mPeople.identify("144053a6-4c65-4272-b63f-45391b4d009f");
+        mPeople.initPushHandling("85502243623");
 
         mProgressBar.setVisibility(View.INVISIBLE);
 
@@ -188,7 +196,14 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         Current current = mForecast.getCurrent();
 
         mLocationLabel.setText(mLocale);
-        mTemperatureLabel.setText(current.getTemperature() + "");
+        int fcTemp;
+        if (tempFormat.get() != "F") {
+            fcTemp = ((current.getTemperature() - 32)*5/9);
+        }
+        else {
+            fcTemp = current.getTemperature();
+        }
+        mTemperatureLabel.setText(fcTemp + "");
         mTimeLabel.setText("At " + current.getFormattedTime() + " it will be");
         mHumidityValue.setText(current.getHumidity() + "");
         mPrecipValue.setText(current.getPrecipChance() + "%");
