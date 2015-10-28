@@ -53,7 +53,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
     public static final String HOURLY_FORECAST = "HOURLY_FORECAST";
     public static final String LOCALE = "LOCALE";
 
-    String projectToken = "sm_android";
+    String projectToken = "672b955bfe724a0ed8de9892fdb937fc";
     MixpanelAPI mMixpanel;
     MixpanelAPI.People mPeople;
     private static Tweak<String> tempFormat = MixpanelAPI.stringTweak("Temperature Format", "F");
@@ -88,8 +88,9 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
         mMixpanel = MixpanelAPI.getInstance(this, projectToken);
         mPeople = mMixpanel.getPeople();
-        mMixpanel.identify("144053a6-4c65-4272-b63f-45391b4d009f");
-        mPeople.identify("144053a6-4c65-4272-b63f-45391b4d009f");
+        String distinctId = mMixpanel.getDistinctId();
+        mMixpanel.identify(distinctId);
+        mPeople.identify(distinctId);
         mPeople.initPushHandling("85502243623");
 
         mProgressBar.setVisibility(View.INVISIBLE);
@@ -194,6 +195,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     private void updateDisplay() {
         Current current = mForecast.getCurrent();
+        mMixpanel.track("Weather Refresh", null);
 
         mLocationLabel.setText(mLocale);
         int fcTemp;
@@ -334,6 +336,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     @OnClick (R.id.dailyButton)
     public void startDailyActivity(View view){
+        mMixpanel.track("View Daily", null);
         Intent intent = new Intent(this, DailyForecastActivity.class);
         intent.putExtra(DAILY_FORECAST, mForecast.getDailyForecast());
         intent.putExtra(LOCALE, mLocale);
@@ -342,6 +345,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     @OnClick (R.id.hourlybutton)
     public void startHourlyActivity(View view) {
+        mMixpanel.track("View Hourly", null);
         Intent intent = new Intent(this, HourlyForecastActivity.class);
         intent.putExtra(HOURLY_FORECAST, mForecast.getHourlyForecast());
         startActivity(intent);
