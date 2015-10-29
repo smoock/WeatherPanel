@@ -12,11 +12,14 @@ import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
@@ -59,6 +62,9 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
     private static Tweak<String> tempFormat = MixpanelAPI.stringTweak("Temperature Format", "F");
     private static Tweak<Boolean> showAds = MixpanelAPI.booleanTweak("Show ads", false);
 
+    private AdView mAdView;
+    private AdRequest mAdRequest;
+
     private Forecast mForecast;
     private Location mLastLocation;
     private double mLatitude;
@@ -77,6 +83,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
     @InjectView(R.id.refreshImageView) ImageView mRefreshImageView;
     @InjectView(R.id.progressBar) ProgressBar mProgressBar;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -93,12 +100,16 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         mPeople.identify(distinctId);
         mPeople.initPushHandling("85502243623");
 
+        mAdView = (AdView) findViewById(R.id.adView);
+        mAdRequest = new AdRequest.Builder().build();
+
         mProgressBar.setVisibility(View.INVISIBLE);
 
         try {
             JSONObject props = new JSONObject();
             props.put("Fresh Launch", true);
             mMixpanel.track("App Open", props);
+            mPeople.increment("App Opens", 1);
         } catch (JSONException e) {
             Log.e("MYAPP", "Unable to add properties to JSONObject", e);
         }
@@ -166,6 +177,11 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
                                 @Override
                                 public void run() {
                                     updateDisplay();
+                                    if (showAds.get() != false) {
+                                        findViewById(R.id.hourlybutton).setVisibility(View.INVISIBLE);
+                                        findViewById(R.id.dailyButton).setVisibility(View.INVISIBLE);
+                                        mAdView.loadAd(mAdRequest);
+                                    }
                                 }
                             });
                         } else {
@@ -175,6 +191,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
                         JSONObject props = new JSONObject();
                         props.put("Request Status", requestStatus);
                         mMixpanel.track("Weather Refreshed", props);
+                        mPeople.increment("Weather Refreshes", 1);
                     }
                     catch (IOException e) {
                         Log.e(TAG, "Exception caught", e);
@@ -195,11 +212,10 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     private void updateDisplay() {
         Current current = mForecast.getCurrent();
-        mMixpanel.track("Weather Refresh", null);
 
         mLocationLabel.setText(mLocale);
         int fcTemp;
-        if (tempFormat.get() != "F") {
+        if (tempFormat.get().equals("C")) {
             fcTemp = ((current.getTemperature() - 32)*5/9);
         }
         else {
@@ -212,6 +228,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         mSummaryLabel.setText(current.getSummary());
         Drawable drawable = getResources().getDrawable(current.getIconId());
         mIconImageView.setImageDrawable(drawable);
+
     }
 
     private Forecast parseForecastDetails(String jsonData) throws JSONException{
@@ -336,7 +353,6 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     @OnClick (R.id.dailyButton)
     public void startDailyActivity(View view){
-        mMixpanel.track("View Daily", null);
         Intent intent = new Intent(this, DailyForecastActivity.class);
         intent.putExtra(DAILY_FORECAST, mForecast.getDailyForecast());
         intent.putExtra(LOCALE, mLocale);
@@ -345,7 +361,6 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     @OnClick (R.id.hourlybutton)
     public void startHourlyActivity(View view) {
-        mMixpanel.track("View Hourly", null);
         Intent intent = new Intent(this, HourlyForecastActivity.class);
         intent.putExtra(HOURLY_FORECAST, mForecast.getHourlyForecast());
         startActivity(intent);
