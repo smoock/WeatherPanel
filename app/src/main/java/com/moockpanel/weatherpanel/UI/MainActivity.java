@@ -8,6 +8,7 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,9 +21,12 @@ import android.widget.Toast;
 
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.mixpanel.android.mpmetrics.Tweak;
 import com.moockpanel.weatherpanel.R;
 import com.moockpanel.weatherpanel.weather.Current;
@@ -56,7 +60,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
     public static final String HOURLY_FORECAST = "HOURLY_FORECAST";
     public static final String LOCALE = "LOCALE";
 
-    String projectToken = "672b955bfe724a0ed8de9892fdb937fc";
+    String projectToken = "365cdb37e7391ca2df93c4c672d84190";
     MixpanelAPI mMixpanel;
     MixpanelAPI.People mPeople;
     private static Tweak<String> tempFormat = MixpanelAPI.stringTweak("Temperature Format", "F");
@@ -73,16 +77,31 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     GoogleApiClient mGoogleApiClient;
 
-    @InjectView(R.id.locationLabel) TextView mLocationLabel;
-    @InjectView(R.id.timeLabel) TextView mTimeLabel;
-    @InjectView(R.id.temperatureLabel) TextView mTemperatureLabel;
-    @InjectView(R.id.humidityValue) TextView mHumidityValue;
-    @InjectView(R.id.precipValue) TextView mPrecipValue;
-    @InjectView(R.id.summaryLabel) TextView mSummaryLabel;
-    @InjectView(R.id.iconImageView) ImageView mIconImageView;
-    @InjectView(R.id.refreshImageView) ImageView mRefreshImageView;
-    @InjectView(R.id.progressBar) ProgressBar mProgressBar;
+    @InjectView(R.id.locationLabel)
+    TextView mLocationLabel;
+    @InjectView(R.id.timeLabel)
+    TextView mTimeLabel;
+    @InjectView(R.id.temperatureLabel)
+    TextView mTemperatureLabel;
+    @InjectView(R.id.humidityValue)
+    TextView mHumidityValue;
+    @InjectView(R.id.precipValue)
+    TextView mPrecipValue;
+    @InjectView(R.id.summaryLabel)
+    TextView mSummaryLabel;
+    @InjectView(R.id.iconImageView)
+    ImageView mIconImageView;
+    @InjectView(R.id.refreshImageView)
+    ImageView mRefreshImageView;
+    @InjectView(R.id.progressBar)
+    ProgressBar mProgressBar;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient mClient;
 
+    FirebaseAnalytics mFirebaseAnalytics;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +111,10 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
         buildGoogleApiClient();
         mGoogleApiClient.connect();
+//        Toast.makeText(this, mGoogleApiClient.isConnected() + "", Toast.LENGTH_SHORT).show();
+
+        // Obtain the FirebaseAnalytics instance.
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
 
         mMixpanel = MixpanelAPI.getInstance(this, projectToken);
         mPeople = mMixpanel.getPeople();
@@ -99,6 +122,13 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         mMixpanel.identify(distinctId);
         mPeople.identify(distinctId);
         mPeople.initPushHandling("85502243623");
+
+        // firebase bundle
+        Bundle bundle = new Bundle();
+        bundle.putString(FirebaseAnalytics.Param.LEVEL, "1");
+        bundle.putString(FirebaseAnalytics.Param.SEARCH_TERM, "HEY");
+        bundle.putString(FirebaseAnalytics.Param.ITEM_NAME, "App Open");
+        mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.ECOMMERCE_PURCHASE, bundle);
 
         mAdView = (AdView) findViewById(R.id.adView);
         mAdRequest = new AdRequest.Builder().build();
@@ -123,6 +153,9 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         });
 
         Log.d(TAG, "Main UI code is running");
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        mClient = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     protected synchronized void buildGoogleApiClient() {
@@ -139,6 +172,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         String forecastUrl = "https://api.forecast.io/forecast/" + apiKey + "/"
                 + latitude + "," + longitude;
 
+//        Toast.makeText(this, mGoogleApiClient.isConnected() + "", Toast.LENGTH_SHORT).show();
         if (isNetworkAvailable()) {
             OkHttpClient client = new OkHttpClient();
             Request request = new Request.Builder()
@@ -192,17 +226,14 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
                         props.put("Request Status", requestStatus);
                         mMixpanel.track("Weather Refreshed", props);
                         mPeople.increment("Weather Refreshes", 1);
-                    }
-                    catch (IOException e) {
+                    } catch (IOException e) {
                         Log.e(TAG, "Exception caught", e);
-                    }
-                    catch (JSONException e) {
+                    } catch (JSONException e) {
                         Log.e(TAG, "Exception caught", e);
                     }
                 }
             });
-        }
-        else {
+        } else {
             Toast.makeText(this, R.string.network_unavailable_message,
                     Toast.LENGTH_LONG).show();
         }
@@ -216,9 +247,8 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         mLocationLabel.setText(mLocale);
         int fcTemp;
         if (tempFormat.get().equals("C")) {
-            fcTemp = ((current.getTemperature() - 32)*5/9);
-        }
-        else {
+            fcTemp = ((current.getTemperature() - 32) * 5 / 9);
+        } else {
             fcTemp = current.getTemperature();
         }
         mTemperatureLabel.setText(fcTemp + "");
@@ -231,7 +261,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     }
 
-    private Forecast parseForecastDetails(String jsonData) throws JSONException{
+    private Forecast parseForecastDetails(String jsonData) throws JSONException {
         Forecast forecast = new Forecast();
 
         forecast.setCurrent(getCurrentDetails(jsonData));
@@ -241,7 +271,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         return forecast;
     }
 
-    private Day[] getDailyForecst(String jsonData) throws JSONException{
+    private Day[] getDailyForecst(String jsonData) throws JSONException {
         JSONObject forecast = new JSONObject(jsonData);
         String timezone = forecast.getString("timezone");
         JSONObject daily = forecast.getJSONObject("daily");
@@ -264,7 +294,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         return days;
     }
 
-    private Hour[] getHourlyForecast(String jsonData) throws JSONException{
+    private Hour[] getHourlyForecast(String jsonData) throws JSONException {
         JSONObject forecast = new JSONObject(jsonData);
         String timezone = forecast.getString("timezone");
         JSONObject hourly = forecast.getJSONObject("hourly");
@@ -327,8 +357,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         if (mProgressBar.getVisibility() == View.INVISIBLE) {
             mProgressBar.setVisibility(View.VISIBLE);
             mRefreshImageView.setVisibility(View.INVISIBLE);
-        }
-        else {
+        } else {
             mProgressBar.setVisibility(View.INVISIBLE);
             mRefreshImageView.setVisibility(View.VISIBLE);
         }
@@ -351,15 +380,15 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     }
 
-    @OnClick (R.id.dailyButton)
-    public void startDailyActivity(View view){
+    @OnClick(R.id.dailyButton)
+    public void startDailyActivity(View view) {
         Intent intent = new Intent(this, DailyForecastActivity.class);
         intent.putExtra(DAILY_FORECAST, mForecast.getDailyForecast());
         intent.putExtra(LOCALE, mLocale);
         startActivity(intent);
     }
 
-    @OnClick (R.id.hourlybutton)
+    @OnClick(R.id.hourlybutton)
     public void startHourlyActivity(View view) {
         Intent intent = new Intent(this, HourlyForecastActivity.class);
         intent.putExtra(HOURLY_FORECAST, mForecast.getHourlyForecast());
@@ -375,6 +404,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
             reverseGeocode(mLatitude, mLongitude);
             getForecast(mLatitude, mLongitude);
         }
+        Toast.makeText(this, mLocale + "", Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -385,5 +415,16 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
 
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mClient.disconnect();
     }
 }

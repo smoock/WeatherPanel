@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 22
+    compileSdkVersion 23
     buildToolsVersion "22.0.1"
 
     defaultConfig {
@@ -25,6 +25,14 @@ dependencies {
     compile 'com.android.support:recyclerview-v7:22.2.0'
     compile 'com.squareup.okhttp:okhttp:2.4.0'
     compile 'com.jakewharton:butterknife:6.0.0'
-    compile "com.mixpanel.android:mixpanel-android:4.6.4"
-    compile 'com.google.android.gms:play-services:8.1.0'
+    compile 'com.mixpanel.android:mixpanel-android:4.6.4'
+    compile 'com.google.android.gms:play-services:9.0.0'
+    compile 'com.google.firebase:firebase-core:9.0.0'
+    compile 'com.google.firebase:firebase-analytics:9.0.0'
 }
+
+apply plugin: 'com.google.gms.google-services'
+
+
+
+
